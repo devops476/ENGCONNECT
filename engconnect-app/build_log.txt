@@ -1,0 +1,52 @@
+
+> engconnect-app@0.1.0 build
+> next build
+
+   ▲ Next.js 16.0.3 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 5.0s
+   Running TypeScript ...
+   Collecting page data using 7 workers ...
+   Generating static pages using 7 workers (0/12) ...
+ ⨯ suspendIfSsr() should be wrapped in a suspense boundary at page "/admin/classes". Read more: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+
+This code path attempted to display a loading indicator, but didn't find a Suspense boundary above it. Please read the error message below carefully.
+
+The fix depends on which of the 4 scenarios caused it:
+
+1. [Next.js] You are missing a loading.tsx file in your app directory. Fix it by adding a loading.tsx file in your app directory.
+
+2. [React] You are missing a <Suspense> boundary in your component. Fix it by wrapping your component (or the entire app) in a <Suspense> component.
+
+3. [Next.js] The component is rendered in the root (outermost) layout.tsx or template.tsx file. Next.js does not wrap those files in a Suspense boundary, even if there is a loading.tsx file in the same folder. To fix it, wrap your layout inside a route group like this:
+
+  - app
+  - - layout.tsx  // contains <html> and <body>, alongside providers and other components that don't need this code path
+  - - loading.tsx  // required for suspense
+  - - (main)
+  - - - layout.tsx  // contains the main layout of your app, like a sidebar or a header, and can use this code path
+  - - - route.tsx  // your actual main page
+  - - - the rest of your app
+
+  For more information on this approach, see Next's documentation on route groups: https://nextjs.org/docs/app/building-your-application/routing/route-groups
+
+4. You caught this error with try-catch or a custom error boundary. Fix this by rethrowing the error or not catching it in the first place.
+
+See: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+
+More information on SSR and Suspense boundaries: https://react.dev/reference/react/Suspense#providing-a-fallback-for-server-errors-and-client-only-content
+    at k (/Users/ace/Projects/EngConnect/engconnect-app/.next/server/chunks/ssr/node_modules_0fd43b2b._.js:71:178)
+    at a._useTokenStore (/Users/ace/Projects/EngConnect/engconnect-app/.next/server/chunks/ssr/node_modules_0fd43b2b._.js:78:8380)
+    at a._useSession (/Users/ace/Projects/EngConnect/engconnect-app/.next/server/chunks/ssr/node_modules_0fd43b2b._.js:78:9136)
+    at a.useUser (/Users/ace/Projects/EngConnect/engconnect-app/.next/server/chunks/ssr/node_modules_0fd43b2b._.js:78:32006)
+    at d (/Users/ace/Projects/EngConnect/engconnect-app/.next/server/chunks/ssr/node_modules_0fd43b2b._.js:1:297)
+    at c (/Users/ace/Projects/EngConnect/engconnect-app/.next/server/chunks/ssr/_f23a5b37._.js:1:6654)
+    at u (/Users/ace/Projects/EngConnect/engconnect-app/.next/server/chunks/ssr/_f23a5b37._.js:1:9357)
+    at ar (/Users/ace/Projects/EngConnect/engconnect-app/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:84366)
+    at aa (/Users/ace/Projects/EngConnect/engconnect-app/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:86185)
+    at as (/Users/ace/Projects/EngConnect/engconnect-app/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js:2:107952)
+Error occurred prerendering page "/admin/classes". Read more: https://nextjs.org/docs/messages/prerender-error
+Export encountered an error on /admin/classes/page: /admin/classes, exiting the build.
+ ⨯ Next.js build worker exited with code: 1 and signal: null

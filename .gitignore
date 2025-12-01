@@ -1,0 +1,14 @@
+node_modules
+.DS_Store
+dist
+.env
+.env.local
+.next
+out
+build
+.vscode
+*.log
+engconnect-app/node_modules
+engconnect-app/.next
+engconnect-app/.env
+engconnect-app/.env.local

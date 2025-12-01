@@ -1,0 +1,245 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - links to Stack Auth (Neon Auth) user
+// Stack Auth handles authentication, this stores additional app-specific data
+model User {
+  id        String   @id // Stack Auth user ID
+  email     String   @unique
+  name      String?
+  role      UserRole @default(STUDENT)
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  studentProfile Student?
+  notifications  Notification[]
+
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
+  ADMIN
+  STUDENT
+}
+
+// Student profile - extends user with enrollment-specific data
+model Student {
+  id             String        @id @default(uuid())
+  userId         String        @unique
+  phone          String?
+  enrolledAt     DateTime      @default(now())
+  paymentStatus  PaymentStatus @default(PENDING)
+  totalPaid      Decimal       @default(0) @db.Decimal(10, 2)
+  totalDue       Decimal       @default(0) @db.Decimal(10, 2)
+  creditBalance  Decimal       @default(5000) @db.Decimal(10, 2) // Bonus credits for enrollments
+  attendanceRate Float         @default(0) // percentage
+
+  // Relations
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments BatchEnrollment[]
+  payments    Payment[]
+  attendances Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([paymentStatus])
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  OVERDUE
+}
+
+// Batch (Course/Class) model
+model Batch {
+  id             String     @id @default(uuid())
+  name           String
+  level          BatchLevel
+  scheduleDays   String[] // Array of days: ["Monday", "Wednesday", "Friday"]
+  scheduleTime   String // e.g., "10:00 AM"
+  capacity       Int
+  enrolledCount  Int        @default(0)
+  instructorName String
+  startDate      DateTime
+  endDate        DateTime
+  description    String?    @db.Text
+  price          Decimal    @default(0) @db.Decimal(10, 2)
+  coverImage     String?
+
+  // Relations
+  enrollments BatchEnrollment[]
+  sessions    ClassSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([level])
+  @@index([startDate])
+}
+
+enum BatchLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+// Many-to-many relationship between Students and Batches
+model BatchEnrollment {
+  id         String   @id @default(uuid())
+  studentId  String
+  batchId    String
+  enrolledAt DateTime @default(now())
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, batchId])
+  @@index([studentId])
+  @@index([batchId])
+}
+
+// Class Session model - individual class meetings
+model ClassSession {
+  id              String        @id @default(uuid())
+  batchId         String
+  topic           String
+  startTime       DateTime
+  endTime         DateTime
+  liveKitRoomName String        @unique
+  liveKitToken    String?       @db.Text
+  status          SessionStatus @default(SCHEDULED)
+  instructorName  String
+  recordingUrl    String?
+  notes           String?       @db.Text
+
+  // Relations
+  batch       Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([startTime])
+  @@index([status])
+  @@index([liveKitRoomName])
+}
+
+enum SessionStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Payment model
+model Payment {
+  id          String                   @id @default(uuid())
+  studentId   String
+  amount      Decimal                  @db.Decimal(10, 2)
+  date        DateTime                 @default(now())
+  method      PaymentMethod
+  status      PaymentTransactionStatus @default(PENDING)
+  batchId     String?
+  description String                   @db.Text
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([date])
+  @@index([status])
+  @@index([batchId])
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  UPI
+  BANK_TRANSFER
+}
+
+enum PaymentTransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
+
+// Attendance model
+model Attendance {
+  id        String           @id @default(uuid())
+  sessionId String
+  studentId String
+  status    AttendanceStatus @default(ABSENT)
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  duration  Int? // in minutes
+
+  // Relations
+  session ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, studentId])
+  @@index([sessionId])
+  @@index([studentId])
+  @@index([status])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+// Notification model
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  read      Boolean          @default(false)
+  actionUrl String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  CLASS_REMINDER
+  PAYMENT_DUE
+  ANNOUNCEMENT
+  ATTENDANCE
+}
